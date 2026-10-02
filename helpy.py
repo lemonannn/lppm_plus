@@ -28,7 +28,7 @@ def create_pitcher_dict():
         
     return pitcher_dict
 
-def calculate_breakouts(FIP_decrease_threshold):
+def calculate_breakouts(FIP_percent_decrease_threshold, FIP_overall_threshold):
     ## Returns list of breakouts by [Pitcher, Year, FIP-]
     
     pitcher_dict = create_pitcher_dict()
@@ -50,16 +50,16 @@ def calculate_breakouts(FIP_decrease_threshold):
                 two_qualified_years_fip = pitcher_career[i-2][2]
                 
             if ( 
-                (pitcher_fip <= previous_qualified_year_fip - FIP_decrease_threshold) and 
-                (pitcher_fip <= two_qualified_years_fip - FIP_decrease_threshold) and 
-                (pitcher_fip <= 90) and (pitcher_year[1] != STARTING_YEAR + 1) 
+                (FIP_percent_decrease_threshold <= (1 - pitcher_fip / previous_qualified_year_fip)) and 
+                # (pitcher_fip <= two_qualified_years_fip - FIP_decrease_threshold) and 
+                (pitcher_fip <= FIP_overall_threshold) and (pitcher_year[1] != STARTING_YEAR + 1) 
                 ):
                 
                 breakouts.append(pitcher_year)
 
     return breakouts
 
-def get_analysis_df():
+def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold):
     df = pd.read_csv('arsenal_data.csv')
     
     # basic info, result stats
@@ -74,43 +74,45 @@ def get_analysis_df():
                     'piFA-Z', 'piFC-Z', 'piFS-Z', 'piSI-Z', 'piCH-Z', 'piSL-Z', 'piCU-Z', 'piCS-Z', 'piKN-Z',
                     'pb_command', 'pb_c_CH', 'pb_c_CU', 'pb_c_FF', 'pb_c_SI', 'pb_c_SL', 'pb_c_KC', 'pb_c_FC', 'pb_c_FS']].copy()
 
-    breakouts = calculate_breakouts(15)
+    breakouts = calculate_breakouts(FIP_decrease_threshold, FIP_overall_threshold)
 
     filtered_df = filtered_df.sort_values(['PlayerName', 'Season'])
-    numeric_cols = filtered_df.select_dtypes(include="number").columns
-    previous = filtered_df.groupby("PlayerName")[numeric_cols].shift(1)
-    changes = filtered_df[numeric_cols] - previous
-
-    filtered_df[[f"{col}_change" for col in numeric_cols]] = (
-        changes
-    )
-
-    filtered_df[[f"{col}_prev" for col in numeric_cols]] = (
-        previous
-    )
     
-    filtered_df
-
-    numeric_cols = filtered_df.select_dtypes(include="number").columns
-
-    breakout_df = filtered_df[
-        filtered_df[['PlayerName', 'Season']].apply(tuple, axis=1).isin(
-            [(x[0], x[1]) for x in breakouts]
-        )
-    ]
-
+    next = filtered_df.groupby("PlayerName").shift(-1)
+    next_next = filtered_df.groupby("PlayerName").shift(-2)
+    next_next_next = filtered_df.groupby("PlayerName").shift(-3)
+    
+    filtered_df['next_Season'] = next['Season']
+    filtered_df['next_next_Season'] = next_next['Season']
+    filtered_df['next_next_next_Season'] = next_next_next['Season']
+    
+    filtered_df.loc[
+            filtered_df['next_next_Season'] <= filtered_df['Season'],
+            'next_next_Season'
+    ] = 0
+    filtered_df.loc[
+        filtered_df['next_next_next_Season'] <= filtered_df['Season'],
+        'next_next_next_Season'
+    ] = 0
+    
     breakout_years = {
-        (x[0], x[1])
-        for x in breakouts
+            (x[0], x[1])
+            for x in breakouts
     }
-
-    filtered_df["breakout"] = [
-        int((PlayerName, Season) in breakout_years)
-        for PlayerName, Season in zip(filtered_df["PlayerName"], filtered_df["Season"])
+    
+    filtered_df["led_to_breakout"] = [
+            ((PlayerName, Season) in breakout_years)
+            for PlayerName, Season in zip(filtered_df["PlayerName"], filtered_df["next_Season"]) 
+            or zip(filtered_df["PlayerName"], filtered_df["next_next_Season"])
+            or zip(filtered_df["PlayerName"], filtered_df["next_next_next_Season"])
     ]
+    
+    filtered_df['next_FIP-'] = next['FIP-']
+    
+    analysis_df = filtered_df[filtered_df['Season'] >= 2007].copy()
 
-    analysis_df = filtered_df[filtered_df['Season'] >= 2008]
-    analysis_df = analysis_df.dropna(subset=["FIP-_prev"])
+    analysis_df = analysis_df.dropna(subset=["FIP-"])
+    analysis_df = analysis_df.dropna(subset=["next_FIP-"])
     
     return analysis_df
 
@@ -123,19 +125,20 @@ def get_train_test_split(analysis_df, velo=True, fip=True, movement=True, usage=
     feature_cols = []
     
     if velo:
-        feature_cols.extend([f"piv{p}_prev" for p in pitch_types])
+        feature_cols.extend([f"piv{p}" for p in pitch_types])
     if fip:
-        feature_cols.extend(["FIP-_prev"])
+        feature_cols.extend(["FIP-"])
     if movement:
-        feature_cols.extend([f"pi{p}-X_prev" for p in pitch_types] + [f"pi{p}-Z_prev" for p in pitch_types])
+        feature_cols.extend([f"pi{p}-X" for p in pitch_types] + [f"pi{p}-Z" for p in pitch_types])
     if usage: 
-        feature_cols.extend( [f"pi{p}%_prev" for p in pitch_types])
+        feature_cols.extend( [f"pi{p}%" for p in pitch_types])
     if movement_residuals:
-        feature_cols.extend([f"{p}_X_residual_prev" for p in pitch_types] + [f"{p}_Z_residual_prev" for p in pitch_types])
+        feature_cols.extend([f"{p}_X_residual" for p in pitch_types] + [f"{p}_Z_residual" for p in pitch_types])
 
     # Features and target
     X = analysis_df[feature_cols].fillna(0)
-    y = analysis_df["FIP-"]
+    y = analysis_df["next_FIP-"]
+
 
     # Same time-based split you've been using
     X_train = X.loc[train_mask]
@@ -212,28 +215,28 @@ def predict_residuals(analysis_df):
 
 
             # Initialize columns
-            analysis_df[f"expected_{p}_Z_prev"] = np.nan
-            analysis_df[f"expected_{p}_X_prev"] = np.nan
+            analysis_df[f"expected_{p}_Z"] = np.nan
+            analysis_df[f"expected_{p}_X"] = np.nan
 
             # ----------------
             # Z-break model
             # ----------------
             z_mask = (
-                analysis_df[f"piv{p}_prev"].notna() &
-                analysis_df[f"pi{p}-Z_prev"].notna()
+                analysis_df[f"piv{p}"].notna() &
+                analysis_df[f"pi{p}-Z"].notna()
             )
 
             if z_mask.sum() > 1:
                 z_model = LinearRegression()
 
                 z_model.fit(
-                    analysis_df.loc[z_mask, [f"piv{p}_prev"]],
-                    analysis_df.loc[z_mask, f"pi{p}-Z_prev"]
+                    analysis_df.loc[z_mask, [f"piv{p}"]],
+                    analysis_df.loc[z_mask, f"pi{p}-Z"]
                 )
 
-                analysis_df.loc[z_mask, f"expected_{p}_Z_prev"] = (
+                analysis_df.loc[z_mask, f"expected_{p}_Z"] = (
                     z_model.predict(
-                        analysis_df.loc[z_mask, [f"piv{p}_prev"]]
+                        analysis_df.loc[z_mask, [f"piv{p}"]]
                     )
                 )
 
@@ -241,32 +244,32 @@ def predict_residuals(analysis_df):
             # X-break model
             # ----------------
             x_mask = (
-                analysis_df[f"piv{p}_prev"].notna() &
-                analysis_df[f"pi{p}-X_prev"].notna()
+                analysis_df[f"piv{p}"].notna() &
+                analysis_df[f"pi{p}-X"].notna()
             )
 
             if x_mask.sum() > 1:
                 x_model = LinearRegression()
 
                 x_model.fit(
-                    analysis_df.loc[x_mask, [f"piv{p}_prev"]],
-                    analysis_df.loc[x_mask, f"pi{p}-X_prev"]
+                    analysis_df.loc[x_mask, [f"piv{p}"]],
+                    analysis_df.loc[x_mask, f"pi{p}-X"]
                 )
 
-                analysis_df.loc[x_mask, f"expected_{p}_X_prev"] = (
+                analysis_df.loc[x_mask, f"expected_{p}_X"] = (
                     x_model.predict(
-                        analysis_df.loc[x_mask, [f"piv{p}_prev"]]
+                        analysis_df.loc[x_mask, [f"piv{p}"]]
                     )
                 )
                 
         for p in pitch_types:
 
-            analysis_df[f"{p}_Z_residual_prev"] = (
-                analysis_df[f"pi{p}-Z_prev"]
-                - analysis_df[f"expected_{p}_Z_prev"]
+            analysis_df[f"{p}_Z_residual"] = (
+                analysis_df[f"pi{p}-Z"]
+                - analysis_df[f"expected_{p}_Z"]
             )
 
-            analysis_df[f"{p}_X_residual_prev"] = (
-                analysis_df[f"pi{p}-X_prev"]
-                - analysis_df[f"expected_{p}_X_prev"]
+            analysis_df[f"{p}_X_residual"] = (
+                analysis_df[f"pi{p}-X"]
+                - analysis_df[f"expected_{p}_X"]
             )

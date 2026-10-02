@@ -29,7 +29,7 @@ def main():
     
     parser = argparse.ArgumentParser()
     parser.add_argument("start_year", nargs='?', default=2015, type=int)
-    parser.add_argument("end_year", nargs='?', default=2025, type=int)
+    parser.add_argument("end_year", nargs='?', default=2026, type=int)
     parser.add_argument("innings_pitched", nargs='?', default=100, type=float)
 
     args = parser.parse_args()
