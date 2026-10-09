@@ -1,12 +1,17 @@
 ## Helper Functions
 
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
-from pygam import LinearGAM, s, terms
 from sklearn.linear_model import LinearRegression
 import warnings
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import ElasticNet
+from xgboost import XGBRegressor
+from sklearn.ensemble import RandomForestRegressor
+from pygam import LinearGAM, s, terms
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
 
 
 STARTING_YEAR = pd.read_csv('arsenal_data.csv')['Season'].min()
@@ -59,6 +64,25 @@ def calculate_breakouts(FIP_percent_decrease_threshold, FIP_overall_threshold):
 
     return breakouts
 
+def get_year_df(year):
+    df = pd.read_csv('arsenal_data.csv')
+        
+    # basic info, result stats
+    # pitch velocity info
+    # pitch usage info
+    # pitch movement info (horizontal)
+    # pitch movement info (vertical)
+    filtered_df = df[['PlayerName', 'Season', 'FIP-', 'ERA-', 
+                    'pivFA', 'pivFC', 'pivFS', 'pivSI', 'pivCH', 'pivSL', 'pivCU', 'pivCS', 'pivKN',
+                    'piFA%', 'piFC%', 'piFS%', 'piSI%', 'piCH%', 'piSL%', 'piCU%', 'piCS%', 'piKN%',
+                    'piFA-X', 'piFC-X', 'piFS-X', 'piSI-X', 'piCH-X', 'piSL-X', 'piCU-X', 'piCS-X', 'piKN-X',
+                    'piFA-Z', 'piFC-Z', 'piFS-Z', 'piSI-Z', 'piCH-Z', 'piSL-Z', 'piCU-Z', 'piCS-Z', 'piKN-Z',
+                    'pb_command', 'pb_c_CH', 'pb_c_CU', 'pb_c_FF', 'pb_c_SI', 'pb_c_SL', 'pb_c_KC', 'pb_c_FC', 'pb_c_FS']].copy()
+    
+    filtered_df = filtered_df[filtered_df['Season'] == year]
+    
+    return filtered_df
+    
 def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold):
     df = pd.read_csv('arsenal_data.csv')
     
@@ -72,7 +96,9 @@ def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold):
                     'piFA%', 'piFC%', 'piFS%', 'piSI%', 'piCH%', 'piSL%', 'piCU%', 'piCS%', 'piKN%',
                     'piFA-X', 'piFC-X', 'piFS-X', 'piSI-X', 'piCH-X', 'piSL-X', 'piCU-X', 'piCS-X', 'piKN-X',
                     'piFA-Z', 'piFC-Z', 'piFS-Z', 'piSI-Z', 'piCH-Z', 'piSL-Z', 'piCU-Z', 'piCS-Z', 'piKN-Z',
-                    'pb_command', 'pb_c_CH', 'pb_c_CU', 'pb_c_FF', 'pb_c_SI', 'pb_c_SL', 'pb_c_KC', 'pb_c_FC', 'pb_c_FS']].copy()
+                    'pb_command', 'pb_c_CH', 'pb_c_CU', 'pb_c_FF', 'pb_c_SI', 'pb_c_SL', 'pb_c_KC', 'pb_c_FC', 'pb_c_FS',
+                    'pb_stuff', 'pb_s_CH', 'pb_s_CU', 'pb_s_FF', 'pb_s_SI', 'pb_s_SL', 'pb_s_KC', 'pb_s_FC', 'pb_s_FS',
+                    'pb_overall', 'pb_o_CH', 'pb_o_CU', 'pb_o_FF', 'pb_o_SI', 'pb_o_SL', 'pb_o_KC', 'pb_o_FC', 'pb_o_FS']].copy()
 
     breakouts = calculate_breakouts(FIP_decrease_threshold, FIP_overall_threshold)
 
@@ -116,11 +142,20 @@ def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold):
     
     return analysis_df
 
-def get_train_test_split(analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False):
-    train_mask = analysis_df["Season"] < 2020
-    test_mask = analysis_df["Season"] > 2020
+def get_train_test_split(analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False, stuff_plus=False, command_plus=False, pitching_plus=False, testing_range=(2020, 2025), training_range=(2000, 2020)):
+    
+    train_mask = (
+    (analysis_df["Season"] >= training_range[0]) &
+    (analysis_df["Season"] <= training_range[1])
+    )
+    
+    test_mask = (
+    (analysis_df["Season"] >= testing_range[0]) &
+    (analysis_df["Season"] <= testing_range[1])
+)
 
     pitch_types = ["FA", "FC", "SI", "CH", "SL", "CU"]
+    stuff_plus_types = ["FF", "FC", "SI", "CH", "SL", "CU"]
     
     feature_cols = []
     
@@ -134,6 +169,12 @@ def get_train_test_split(analysis_df, velo=True, fip=True, movement=True, usage=
         feature_cols.extend( [f"pi{p}%" for p in pitch_types])
     if movement_residuals:
         feature_cols.extend([f"{p}_X_residual" for p in pitch_types] + [f"{p}_Z_residual" for p in pitch_types])
+    if stuff_plus:
+        feature_cols.extend([f"pb_s_{p}" for p in stuff_plus_types])
+    if command_plus:
+        feature_cols.extend([f"pb_c_{p}" for p in stuff_plus_types])
+    if pitching_plus:
+        feature_cols.extend([f"pb_o_{p}" for p in stuff_plus_types])
 
     # Features and target
     X = analysis_df[feature_cols].fillna(0)
@@ -273,3 +314,68 @@ def predict_residuals(analysis_df):
                 analysis_df[f"pi{p}-X"]
                 - analysis_df[f"expected_{p}_X"]
             )
+            
+            
+def lift_curve(y_true, scores, percentiles=np.linspace(0.01, 1.0, 100)):
+    y_true = np.asarray(y_true)
+    scores = np.asarray(scores)
+
+    order = np.argsort(scores)
+    y_sorted = y_true[order]
+
+    baseline = y_true.mean()
+
+    lifts = []
+
+    for p in percentiles:
+        n = max(1, int(len(y_sorted) * p))
+        precision = y_sorted[:n].mean()
+        lifts.append(precision / baseline)
+
+    return percentiles, np.array(lifts)
+
+def create_elastic_net(analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False):
+    
+    X, X_train, X_test, y_train, y_test = get_train_test_split(analysis_df, velo, fip, movement, usage, movement_residuals)
+    
+    elastic = make_pipeline(
+        StandardScaler(),
+        ElasticNet(
+            alpha=0.1,
+            l1_ratio=0.5,
+            max_iter=10000,
+            random_state=42
+        )
+    )
+
+    elastic.fit(X_train, y_train)
+
+    pred_elastic = elastic.predict(X_test)
+    
+    return elastic, pred_elastic
+
+def create_xgboost(analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False):
+    
+    X, X_train, X_test, y_train, y_test = get_train_test_split(analysis_df, velo, fip, movement, usage, movement_residuals)
+        
+
+    xgb = XGBRegressor(
+        n_estimators=500,
+        learning_rate=0.03,
+        max_depth=3,
+        min_child_weight=5,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective="reg:squarederror",
+        random_state=42
+    )
+
+    xgb.fit(X_train, y_train)
+
+    pred_xgb = xgb.predict(X_test)
+
+def test_all_models(analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False):
+    create_gam()
+    create_random_forest()
+    create_elastic_net()
+    create_xgboost()
