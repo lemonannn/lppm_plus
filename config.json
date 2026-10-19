@@ -1,0 +1,152 @@
+{
+
+    "score_cols": {
+
+        "Residuals": {
+
+            "Residuals RF": {
+                "column": "score_residuals_rf",
+                "enabled": true
+            },
+            "Residuals EN": {
+                "column": "score_residuals_en",
+                "enabled": true
+            },
+            "Residuals XGB": {
+                "column": "score_residuals_xgb",
+                "enabled": true
+            },
+            "Residuals GAM": {
+                "column": "score_residuals_gam",
+                "enabled": true
+            }
+
+        },
+
+        "Velo + FIP": {
+
+            "Velo + FIP RF": {
+                "column": "score_velo_rf",
+                "enabled": true
+            },
+            "Velo + FIP GAM": {
+                "column": "score_velo_gam",
+                "enabled": true
+            },
+            "Velo + FIP XGB": {
+                "column": "score_velo_xgb",
+                "enabled": true
+            },
+            "Velo + FIP EN": {
+                "column": "score_velo_en",
+                "enabled": true
+            }
+
+        },
+
+        "Regular Movement": {
+
+            "Movement RF": {
+                "column": "score_movement_rf",
+                "enabled": true
+            },
+            "Movement GAM": {
+                "column": "score_movement_gam",
+                "enabled": true
+            },
+            "Movement XGB": {
+                "column": "score_movement_xgb",
+                "enabled": true
+            },
+            "Movement EN": {
+                "column": "score_movement_en",
+                "enabled": true
+            }
+
+        },
+
+        "Usage": {
+
+            "Usage RF": {
+                "column": "score_usage_rf",
+                "enabled": true
+            },
+            "Usage GAM": {
+                "column": "score_usage_gam",
+                "enabled": true
+            },
+            "Usage XGB": {
+                "column": "score_usage_xgb",
+                "enabled": true
+            },
+            "Usage EN": {
+                "column": "score_usage_en",
+                "enabled": true
+            }
+
+        },
+
+        "Stuff+": {
+
+            "Stuff+ EN": {
+                "column": "score_stuff_en",
+                "enabled": true
+            },
+            "Stuff+ RF": {
+                "column": "score_stuff_rf",
+                "enabled": true
+            },
+            "Stuff+ XGB": {
+                "column": "score_stuff_xgb",
+                "enabled": true
+            },
+            "Stuff+ GAM": {
+                "column": "score_stuff_gam",
+                "enabled": true
+            }
+
+        },
+
+        "Command+": {
+
+            "Command+ RF": {
+                "column": "score_command_rf",
+                "enabled": true
+            },
+            "Command+ XGB": {
+                "column": "score_command_xgb",
+                "enabled": true
+            },
+            "Command+ EN": {
+                "column": "score_command_en",
+                "enabled": true
+            },
+            "Command+ GAM": {
+                "column": "score_command_gam",
+                "enabled": true
+            }
+
+        },
+
+        "Stuff+ and Command+": {
+
+            "Stuff+ and Command+ RF": {
+                "column": "score_all_plus_rf",
+                "enabled": true
+            },
+            "Stuff+ and Command+ XGB": {
+                "column": "score_all_plus_xgb",
+                "enabled": true
+            },
+            "Stuff+ and Command+ EN": {
+                "column": "score_all_plus_en",
+                "enabled": true
+            },
+            "Stuff+ and Command+ GAM": {
+                "column": "score_all_plus_gam",
+                "enabled": true
+            }
+
+        }
+    }
+}

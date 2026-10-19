@@ -13,7 +13,7 @@ class FIP_Predictor:
     
     def __init__(self, analysis_df, velo=True, fip=True, movement=True, usage=True, movement_residuals=False, stuff_plus=False, command_plus=False, pitching_plus=False, testing_range=(2020, 2025), training_range=(2000, 2020)):
         
-        self.X, self.X_train, self.X_test, self.y_train, self.y_test = helpy.get_train_test_split(analysis_df, velo, fip, movement, usage, movement_residuals, stuff_plus, command_plus, pitching_plus, testing_range, training_range)
+        self.X, self.X_train, self.X_test, self.y_train, self.y_test = helpy.get_train_test_split(analysis_df, velo, fip, movement, usage, movement_residuals, stuff_plus, command_plus, pitching_plus, testing_range=testing_range, training_range=training_range)
         
         
     def create_elastic_net(self):
