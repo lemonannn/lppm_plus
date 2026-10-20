@@ -1,3 +1,5 @@
+# Single FIP- Predictor, with XGB, EN, RF, and GAM models for the selected variables included
+
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import ElasticNet
@@ -30,12 +32,12 @@ class FIP_Predictor:
 
         elastic.fit(self.X_train, self.y_train)
 
-        pred_elastic = elastic.predict(self.X_test)
+        pred_en = elastic.predict(self.X_test)
         
         mae, rmse, r2 = self.eval_model(elastic)
         
         self.elastic = elastic
-        self.pred_elastic = pred_elastic
+        self.pred_en = pred_en
         
         return mae, rmse, r2
 
@@ -113,16 +115,24 @@ class FIP_Predictor:
         
         return mae, rmse, r2
         
-    def create_all_models(self):
+    def create_models(self, model_config, tuning_mode=False):
+
+        if tuning_mode:
+            return
+
+        model_methods = {
+            "en": ("Elastic Net", self.create_elastic_net),
+            "xgb": ("XGBoost", self.create_xgboost),
+            "rf": ("Random Forest", self.create_random_forest),
+            "gam": ("GAM", self.create_gam)
+        }
 
         results = []
 
-        for name, create_model in [
-            ("Elastic Net", self.create_elastic_net),
-            ("XGBoost", self.create_xgboost),
-            ("Random Forest", self.create_random_forest),
-            ("GAM", self.create_gam)
-        ]:
+        for key, (name, create_model) in model_methods.items():
+
+            if not model_config.get(key, False):
+                continue
 
             mae, rmse, r2 = create_model()
 
@@ -134,4 +144,5 @@ class FIP_Predictor:
             })
 
         return pd.DataFrame(results)
+    
         

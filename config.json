@@ -1,152 +1,180 @@
+
 {
-
-    "score_cols": {
-
-        "Residuals": {
-
-            "Residuals RF": {
-                "column": "score_residuals_rf",
-                "enabled": true
-            },
-            "Residuals EN": {
-                "column": "score_residuals_en",
-                "enabled": true
-            },
-            "Residuals XGB": {
-                "column": "score_residuals_xgb",
-                "enabled": true
-            },
-            "Residuals GAM": {
-                "column": "score_residuals_gam",
-                "enabled": true
-            }
-
-        },
-
-        "Velo + FIP": {
-
-            "Velo + FIP RF": {
-                "column": "score_velo_rf",
-                "enabled": true
-            },
-            "Velo + FIP GAM": {
-                "column": "score_velo_gam",
-                "enabled": true
-            },
-            "Velo + FIP XGB": {
-                "column": "score_velo_xgb",
-                "enabled": true
-            },
-            "Velo + FIP EN": {
-                "column": "score_velo_en",
-                "enabled": true
-            }
-
-        },
-
-        "Regular Movement": {
-
-            "Movement RF": {
-                "column": "score_movement_rf",
-                "enabled": true
-            },
-            "Movement GAM": {
-                "column": "score_movement_gam",
-                "enabled": true
-            },
-            "Movement XGB": {
-                "column": "score_movement_xgb",
-                "enabled": true
-            },
-            "Movement EN": {
-                "column": "score_movement_en",
-                "enabled": true
-            }
-
-        },
-
-        "Usage": {
-
-            "Usage RF": {
-                "column": "score_usage_rf",
-                "enabled": true
-            },
-            "Usage GAM": {
-                "column": "score_usage_gam",
-                "enabled": true
-            },
-            "Usage XGB": {
-                "column": "score_usage_xgb",
-                "enabled": true
-            },
-            "Usage EN": {
-                "column": "score_usage_en",
-                "enabled": true
-            }
-
-        },
-
-        "Stuff+": {
-
-            "Stuff+ EN": {
-                "column": "score_stuff_en",
-                "enabled": true
-            },
-            "Stuff+ RF": {
-                "column": "score_stuff_rf",
-                "enabled": true
-            },
-            "Stuff+ XGB": {
-                "column": "score_stuff_xgb",
-                "enabled": true
-            },
-            "Stuff+ GAM": {
-                "column": "score_stuff_gam",
-                "enabled": true
-            }
-
-        },
-
-        "Command+": {
-
-            "Command+ RF": {
-                "column": "score_command_rf",
-                "enabled": true
-            },
-            "Command+ XGB": {
-                "column": "score_command_xgb",
-                "enabled": true
-            },
-            "Command+ EN": {
-                "column": "score_command_en",
-                "enabled": true
-            },
-            "Command+ GAM": {
-                "column": "score_command_gam",
-                "enabled": true
-            }
-
-        },
-
-        "Stuff+ and Command+": {
-
-            "Stuff+ and Command+ RF": {
-                "column": "score_all_plus_rf",
-                "enabled": true
-            },
-            "Stuff+ and Command+ XGB": {
-                "column": "score_all_plus_xgb",
-                "enabled": true
-            },
-            "Stuff+ and Command+ EN": {
-                "column": "score_all_plus_en",
-                "enabled": true
-            },
-            "Stuff+ and Command+ GAM": {
-                "column": "score_all_plus_gam",
-                "enabled": true
-            }
-
-        }
+  "Predictors": {
+    "Residuals": {
+        "usage": false,
+        "movement": false,
+        "movement_residuals": true
+    },
+    "Usage": {
+        "movement": false,
+        "movement_residuals": false
+    },
+    "Regular Movement": {
+        "usage": false,
+        "movement": true,
+        "movement_residuals": false
+    },
+    "Baseline": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false
+    },
+    "No FIP": {
+        "fip": false,
+        "movement": false,
+        "movement_residuals": true,
+        "usage": false
+    },
+    "Velo + FIP": {
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false
+    },
+    "Stuff+": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false,
+        "stuff_plus": true
+    },
+    "Stuff+ and Command+": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "pitching_plus": true,
+        "command_plus": true
+    },
+    "Command+": {
+        "movement": false,
+        "movement_residuals": true,
+        "usage": false,
+        "command_plus": true
     }
+  },
+  "Feature Sets": {
+    "Residuals": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": false
+      }
+    },
+    "Usage": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": false,
+        "en": false,
+        "gam": false
+      }
+    },
+    "Regular Movement": {
+      "enabled": false,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Baseline": {
+      "enabled": false,
+      "data": "analysis",
+      "models": {
+        "rf": false,
+        "xgb": false,
+        "en": false,
+        "gam": true
+      }
+    },
+    "No FIP": {
+      "enabled": false,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Velo + FIP": {
+      "enabled": false,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Stuff+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Command+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Stuff+ and Command+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    }
+  },
+  "scoring": {
+    "baseline": {
+      "feature_set": "Baseline",
+      "model": "gam"
+    },
+    "metrics": {
+      "roc_auc": true,
+      "pr_auc": true,
+      "lift_plot": true,
+      "top_10_percent_breakout_rate": true
+    },
+    "lift_plot": {
+      "enabled": true,
+      "max_percent": 50,
+      "ticks": [0, 5, 10, 20, 30, 40, 50]
+    }
+  },
+  "tuning": {
+    "enabled": true,
+    "feature_sets": ["Residuals"],
+    "models": ["rf"],
+    "objective": "pr_auc",
+    "n_iter": 40,
+    "random_state": 42,
+    "parameters": {
+      "n_estimators": [300, 500, 800],
+      "max_depth": [null, 5, 8, 12, 16],
+      "min_samples_leaf": [2, 5, 10, 20],
+      "min_samples_split": [2, 5, 10, 20],
+      "max_features": [0.5, 0.75, 1.0]
+    }
+  }
 }

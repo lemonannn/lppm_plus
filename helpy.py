@@ -6,67 +6,11 @@ from sklearn.linear_model import LinearRegression
 import warnings
 from sklearn.preprocessing import SplineTransformer
 from sklearn.pipeline import make_pipeline
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+import json
 
 # list of pitch types per fangraphs data
 pitch_types = ["FA", "FC", "SI", "CH", "SL", "CU"]
-
-# list of preset predictor model configurations
-# will still only apply if added to the predictor list in single_analysis.py and activated
-PREDICTOR_CONFIGS = {
-    "Residuals": {
-        "usage": False,
-        "movement": False,
-        "movement_residuals": True,
-    },
-    "Usage": {
-        "movement": False,
-        "movement_residuals": False,
-    },
-    "Regular Movement": {
-        "usage": False,
-        "movement": True,
-        "movement_residuals": False,
-    },
-    "Baseline": {
-        "velo": False,
-        "movement": False,
-        "usage": False,
-        "movement_residuals": False,
-    },
-    "No FIP": {
-        "fip": False,
-        "movement": False,
-        "movement_residuals": True,
-        "usage": False,
-    },
-    "Velo + FIP": {
-        "movement": False,
-        "usage": False,
-        "movement_residuals": False,
-    },
-    "Stuff+": {
-        "velo": False,
-        "movement": False,
-        "usage": False,
-        "movement_residuals": False,
-        "stuff_plus": True,
-    },
-    "Stuff+ and Command+": {
-        "velo": False,
-        "movement": False,
-        "usage": False,
-        "pitching_plus": True,
-        "command_plus": True,
-    },
-    "Command+": {
-        "movement": False,
-        "movement_residuals": True,
-        "usage": False,
-        "command_plus": True,
-    },
-}
 
 # Starting Season for the data
 STARTING_YEAR = pd.read_csv('arsenal_data.csv')['Season'].min()
@@ -428,3 +372,9 @@ def lift_curve(y_true, scores, percentiles=np.linspace(0.01, 1.0, 100)):
         lifts.append(precision / baseline)
 
     return percentiles, np.array(lifts)
+
+def load_config(config_path="config.json"):
+    # Loads a config file
+    
+    with open(config_path, "r") as f:
+        return json.load(f)
