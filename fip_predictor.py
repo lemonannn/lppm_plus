@@ -1,4 +1,5 @@
 # Single FIP- Predictor, with XGB, EN, RF, and GAM models for the selected variables included
+# All the functions here are pretty self evident
 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -10,6 +11,7 @@ import helpy
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import ParameterSampler
 
 class FIP_Predictor:
     
@@ -17,16 +19,18 @@ class FIP_Predictor:
         
         self.X, self.X_train, self.X_test, self.y_train, self.y_test = helpy.get_train_test_split(analysis_df, velo, fip, movement, usage, movement_residuals, stuff_plus, command_plus, pitching_plus, testing_range=testing_range, training_range=training_range)
         
+        self.predictions = []
         
-    def create_elastic_net(self):
+        
+    def create_elastic_net(self, predictor_name, params=None):
+        
+        if params == None:
+            params = default_params["en"]
     
         elastic = make_pipeline(
             StandardScaler(),
             ElasticNet(
-                alpha=0.1,
-                l1_ratio=0.5,
-                max_iter=10000,
-                random_state=42
+                **params
             )
         )
 
@@ -39,19 +43,17 @@ class FIP_Predictor:
         self.elastic = elastic
         self.pred_en = pred_en
         
+        self.predictions.append({'model_name': f'{predictor_name}_en', 'model': elastic, 'pred_y': pred_en, 'hyperparameters': params})
+        
         return mae, rmse, r2
 
-    def create_xgboost(self):
+    def create_xgboost(self, predictor_name, params=None):
+        
+        if params == None: 
+            params = default_params["xgb"]
 
         xgb = XGBRegressor(
-            n_estimators=500,
-            learning_rate=0.03,
-            max_depth=3,
-            min_child_weight=5,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            objective="reg:squarederror",
-            random_state=42
+            **params
         )
 
         xgb.fit(self.X_train, self.y_train)
@@ -63,17 +65,16 @@ class FIP_Predictor:
         self.xgb = xgb
         self.pred_xgb = pred_xgb
         
+        self.predictions.append({'model_name': f'{predictor_name}_xgb', 'model': xgb, 'pred_y': pred_xgb, 'hyperparameters': params})
+        
         return mae, rmse, r2
         
-    def create_random_forest(self):
+    def create_random_forest(self, predictor_name, params=None):
+        
+        if params == None:
+            params = default_params['rf']
     
-        rf = RandomForestRegressor(
-            n_estimators=500,
-            min_samples_leaf=10,
-            max_features="sqrt",
-            random_state=42,
-            n_jobs=-1
-        )
+        rf = RandomForestRegressor(**params)
 
         rf.fit(self.X_train, self.y_train)
         
@@ -83,10 +84,12 @@ class FIP_Predictor:
         
         self.rf = rf
         self.pred_rf = pred_rf
+        
+        self.predictions.append({'model_name': f'{predictor_name}_rf', 'model': rf, 'pred_y': pred_rf, 'hyperparameters': params})
 
         return mae, rmse, r2
     
-    def create_gam(self):
+    def create_gam(self, predictor_name, params=None):
 
         gam_terms = terms.s(0)
 
@@ -103,6 +106,8 @@ class FIP_Predictor:
         self.gam = gam
         self.pred_gam = pred_gam
         
+        self.predictions.append({'model_name': f'{predictor_name}_gam', 'model': gam, 'pred_y': pred_gam, 'hyperparameters': params})
+        
         return mae, rmse, r2
     
     def eval_model(self, model):
@@ -115,10 +120,7 @@ class FIP_Predictor:
         
         return mae, rmse, r2
         
-    def create_models(self, model_config, tuning_mode=False):
-
-        if tuning_mode:
-            return
+    def create_models(self, predictor_name, model_config, tuning_config):
 
         model_methods = {
             "en": ("Elastic Net", self.create_elastic_net),
@@ -133,16 +135,64 @@ class FIP_Predictor:
 
             if not model_config.get(key, False):
                 continue
+            
+            params_list = [None]
 
-            mae, rmse, r2 = create_model()
+            if tuning_config.get("enabled", False):
+                tuning_model_config = tuning_config["models"][key]
 
-            results.append({
-                "Model": name,
-                "MAE": mae,
-                "RMSE": rmse,
-                "R2": r2
-            })
+                params_list = list(ParameterSampler(
+                    tuning_model_config["params"],
+                    n_iter=tuning_config["n_iter"],
+                    random_state=tuning_config.get("random_state", 42)
+                ))
+                
+            i = 0
+
+            for params in params_list:
+                mae, rmse, r2 = create_model(predictor_name + str(i), params=params)
+                i = i + 1
+
+                results.append({
+                    "Model": name,
+                    "MAE": mae,
+                    "RMSE": rmse,
+                    "R2": r2
+                })
 
         return pd.DataFrame(results)
     
+    
+default_params = {
+    "en": {
+        "alpha": 0.01,
+        "l1_ratio": 1.0,
+        "max_iter": 100000,
+        "tol": 1e-4,
+        "random_state": 42,
+    },
+
+    "rf": {
+        "n_estimators": 300,
+        "max_depth": 5,
+        "min_samples_split": 10,
+        "min_samples_leaf": 2,
+        "max_features": "log2",
+        "random_state": 42,
+        "n_jobs": -1,
+    },
+
+    "xgb": {
+        "n_estimators": 200,
+        "learning_rate": 0.03,
+        "max_depth": 3,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 1,
+        "reg_lambda": 10,
+        "objective": "reg:squarederror",
+        "random_state": 42,
+        "n_jobs": -1,
+    },
+}
         

@@ -1,0 +1,186 @@
+
+{
+  "Predictors": {
+    "Residuals": {
+        "usage": false,
+        "movement": false,
+        "movement_residuals": true
+    },
+    "Usage": {
+        "movement": false,
+        "movement_residuals": false
+    },
+    "Regular Movement": {
+        "usage": false,
+        "movement": true,
+        "movement_residuals": false
+    },
+    "Baseline": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false
+    },
+    "No FIP": {
+        "fip": false,
+        "movement": false,
+        "movement_residuals": true,
+        "usage": false
+    },
+    "Velo + FIP": {
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false
+    },
+    "Stuff+": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "movement_residuals": false,
+        "stuff_plus": true
+    },
+    "Stuff+ and Command+": {
+        "velo": false,
+        "movement": false,
+        "usage": false,
+        "pitching_plus": true,
+        "command_plus": true
+    },
+    "Command+": {
+        "movement": false,
+        "movement_residuals": true,
+        "usage": false,
+        "command_plus": true
+    }
+  },
+  "Feature Sets": {
+    "Residuals": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Usage": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Regular Movement": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Baseline": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "No FIP": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Velo + FIP": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Stuff+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Command+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    },
+    "Stuff+ and Command+": {
+      "enabled": false,
+      "data": "plus",
+      "models": {
+        "rf": true,
+        "xgb": true,
+        "en": true,
+        "gam": true
+      }
+    }
+  },
+  "tuning": {
+    "enabled": true,
+    "n_iter": 50,
+    "random_state": 42,
+    "n_jobs": -1,
+    "models": {
+      "rf": {
+        "params": {
+          "n_estimators": [100, 200, 500, 800],
+          "max_depth": [null, 5, 10, 20, 30],
+          "min_samples_split": [2, 5, 10, 20],
+          "min_samples_leaf": [1, 2, 4, 8],
+          "max_features": ["sqrt", "log2", 0.5, 1.0]
+        }
+      },
+      "xgb": {
+        "params": {
+          "n_estimators": [100, 200, 500, 800],
+          "max_depth": [2, 3, 4, 5, 7],
+          "learning_rate": [0.01, 0.03, 0.05, 0.1],
+          "subsample": [0.6, 0.8, 1.0],
+          "colsample_bytree": [0.6, 0.8, 1.0],
+          "reg_alpha": [0, 0.1, 1, 5],
+          "reg_lambda": [1, 5, 10, 20]
+        }
+      },
+      "gam": {
+        "params": {
+        }
+      },
+      "en": {
+        "params": {
+          "alpha": [0.001, 0.01, 0.1, 1, 10, 100],
+          "l1_ratio": [0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
+        }
+      }
+    }
+  }
+}

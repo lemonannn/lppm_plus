@@ -8,6 +8,7 @@ from sklearn.preprocessing import SplineTransformer
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
 import json
+import matplotlib.pyplot as plt
 
 # list of pitch types per fangraphs data
 pitch_types = ["FA", "FC", "SI", "CH", "SL", "CU"]
@@ -331,7 +332,7 @@ def breakout_rate_suite(df, score_col, breakout_col="led_to_breakout"):
     print(f'Top 50% Breakout Rate: {fifty['Breakout Rate']:.2%}')
 
 
-def create_baseline_breakout_model(analysis_df, training_range, testing_range):
+def create_baseline_breakout_model(analysis_df, training_range, testing_range, plot_distribution=False):
     # Creates breakout model that only utilizes FIP-
     
     train_df = analysis_df[(analysis_df['Season'] >= training_range[0]) & (analysis_df['Season'] <= training_range[1])]
@@ -350,6 +351,30 @@ def create_baseline_breakout_model(analysis_df, training_range, testing_range):
     test_df["score_fip"] = fip_model.predict_proba(
         test_df[["FIP-"]]
     )[:, 1]
+    
+    if plot_distribution:
+    
+        # Generate a range of FIP- values
+        fip_range = np.linspace(
+            train_df["FIP-"].min(),
+            train_df["FIP-"].max(),
+            300
+        )
+
+        # Predict breakout probability across that range
+        fip_probs = fip_model.predict_proba(
+            pd.DataFrame({"FIP-": fip_range})
+        )[:, 1]
+
+        # Plot the learned curve
+        plt.figure(figsize=(10, 6))
+        plt.plot(fip_range, fip_probs)
+        plt.xlabel("Current Season FIP-")
+        plt.ylabel("Predicted Probability of Breakout")
+        plt.title("Baseline Breakout Model: FIP- Only")
+        plt.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.show()
     
     return test_df
 

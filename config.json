@@ -59,19 +59,19 @@
       "data": "analysis",
       "models": {
         "rf": true,
-        "xgb": true,
+        "xgb": false,
         "en": true,
         "gam": false
       }
     },
     "Usage": {
-      "enabled": true,
+      "enabled": false,
       "data": "analysis",
       "models": {
         "rf": true,
-        "xgb": false,
-        "en": false,
-        "gam": false
+        "xgb": true,
+        "en": true,
+        "gam": true
       }
     },
     "Regular Movement": {
@@ -88,20 +88,20 @@
       "enabled": false,
       "data": "analysis",
       "models": {
-        "rf": false,
-        "xgb": false,
-        "en": false,
-        "gam": true
-      }
-    },
-    "No FIP": {
-      "enabled": false,
-      "data": "analysis",
-      "models": {
         "rf": true,
         "xgb": true,
         "en": true,
         "gam": true
+      }
+    },
+    "No FIP": {
+      "enabled": true,
+      "data": "analysis",
+      "models": {
+        "rf": true,
+        "xgb": false,
+        "en": true,
+        "gam": false
       }
     },
     "Velo + FIP": {
@@ -145,36 +145,42 @@
       }
     }
   },
-  "scoring": {
-    "baseline": {
-      "feature_set": "Baseline",
-      "model": "gam"
-    },
-    "metrics": {
-      "roc_auc": true,
-      "pr_auc": true,
-      "lift_plot": true,
-      "top_10_percent_breakout_rate": true
-    },
-    "lift_plot": {
-      "enabled": true,
-      "max_percent": 50,
-      "ticks": [0, 5, 10, 20, 30, 40, 50]
-    }
-  },
   "tuning": {
-    "enabled": true,
-    "feature_sets": ["Residuals"],
-    "models": ["rf"],
-    "objective": "pr_auc",
-    "n_iter": 40,
+    "enabled": false,
+    "n_iter": 50,
     "random_state": 42,
-    "parameters": {
-      "n_estimators": [300, 500, 800],
-      "max_depth": [null, 5, 8, 12, 16],
-      "min_samples_leaf": [2, 5, 10, 20],
-      "min_samples_split": [2, 5, 10, 20],
-      "max_features": [0.5, 0.75, 1.0]
+    "n_jobs": -1,
+    "models": {
+      "rf": {
+        "params": {
+          "n_estimators": [100, 200, 500, 800],
+          "max_depth": [null, 5, 10, 20, 30],
+          "min_samples_split": [2, 5, 10, 20],
+          "min_samples_leaf": [1, 2, 4, 8],
+          "max_features": ["sqrt", "log2", 0.5, 1.0]
+        }
+      },
+      "xgb": {
+        "params": {
+          "n_estimators": [100, 200, 500, 800],
+          "max_depth": [2, 3, 4, 5, 7],
+          "learning_rate": [0.01, 0.03, 0.05, 0.1],
+          "subsample": [0.6, 0.8, 1.0],
+          "colsample_bytree": [0.6, 0.8, 1.0],
+          "reg_alpha": [0, 0.1, 1, 5],
+          "reg_lambda": [1, 5, 10, 20]
+        }
+      },
+      "gam": {
+        "params": {
+        }
+      },
+      "en": {
+        "params": {
+          "alpha": [0.001, 0.01, 0.1, 1, 10, 100],
+          "l1_ratio": [0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
+        }
+      }
     }
   }
 }

@@ -31,10 +31,17 @@ class Analysis:
         self.plus_df = analysis_df[analysis_df['Season'] > 2020].copy()
             
         self.config = helpy.load_config(config_file)
-            
-            
+        
+    def full_analysis(self):
+        
+           self.get_predictors()
+           self.get_lppm_scores()
+           self.get_model_metrics()
+           
+             
 
     def get_predictors(self):
+        # Creates and trains FIP- predictors as per the given config file
         
         predictors = self.get_predictor_list()
 
@@ -42,7 +49,8 @@ class Analysis:
 
         for name, predictor in predictors.items():
 
-            result = predictor.create_models(self.config["Feature Sets"][name]["models"])
+            result = predictor.create_models(name, model_config=self.config["Feature Sets"][name]["models"], 
+                                             tuning_config=self.config["tuning"])
 
             result.insert(0, "Feature Set", name)
 
@@ -52,7 +60,8 @@ class Analysis:
         self.predictors = predictors
         
         
-    def get_predictor_list(self):   
+    def get_predictor_list(self):
+        # Returns the list of configured predictors   
         
         predictors = {}
         
@@ -71,6 +80,7 @@ class Analysis:
         return predictors
     
     def get_baseline_pred(self):
+        # Returns the FIP- prediction using just previous year FIP-
         
         baseline = FIP_Predictor(
             self.analysis_df,
@@ -79,7 +89,7 @@ class Analysis:
             **self.config['Predictors']['Baseline']
         )
         
-        baseline.create_gam()
+        baseline.create_gam('Baseline')
         
         return baseline.pred_gam
         
@@ -91,123 +101,65 @@ class Analysis:
         analysis_df_test = self.analysis_df[
             self.analysis_df["Season"].between(*self.testing_range)
         ].copy()
-
-        plus_df_test = self.plus_df[
-            self.plus_df["Season"].between(*self.testing_range)
-        ].copy()
-
+        
+        baseline_col = self.get_baseline_pred()
 
         # Build prediction columns only for selected predictors in config.json
-        plus_cols = ["PlayerName", "Season"]
-        score_cols = []
+        for key, predictor in self.predictors.items():
 
-        for name, settings in self.config['Feature Sets'].items():
-            # ex: Name: Residuals 
-            # settings: enabled: True, data: plus, models: {rf: true, en: true}
+            predictions = predictor.predictions
             
-            if not settings['enabled']:
-                continue
-
-            target_df = (
-                analysis_df_test
-                if settings["data"] == "analysis"
-                else plus_df_test
-            )
-
-            for model, activated in settings['models'].items():
-                # ex: model: rf, activated: True
-                
-                if activated == False:
-                    continue
-                
-                col = f"pred_{name}_{model}"
-                target_df[col] = getattr(self.predictors[name], f"pred_{model}")
-                
-                if settings['data'] == 'plus':
-                    plus_cols.append(col)
-                
-                score_cols.append(col)
-
-        # Merge selected plus-model predictions into the main DataFrame
-        analysis_df_test = analysis_df_test.merge(
-            plus_df_test[plus_cols],
-            on=["PlayerName", "Season"],
-            how="left",
-            validate="one_to_one",
-        )
-
-        # Score each selected model against the baseline prediction
-        baseline_col = self.get_baseline_pred()
+            for prediction in predictions:
             
-        for name, settings in self.config['Feature Sets'].items():
-            # ex: Name: Residuals 
-            # settings: enabled: True, data: plus, models: {rf: true, en: true}
-            
-            if not settings['enabled']:
-                continue
-            
-            for model, activated in settings['models'].items():
-                # ex: model: rf, activated: True
+                model_name = prediction['model_name']
+                y_pred = prediction['pred_y']
                 
-                if not activated:
-                    continue
+                col = f"pred_{model_name}"
+                analysis_df_test[col] = y_pred
                 
-                analysis_df_test[f"{name}_{model}_score"] = baseline_col - analysis_df_test[f"pred_{name}_{model}"]
+                
+                # Score each selected model against the baseline prediction
+                analysis_df_test[f"{model_name}_score"] = baseline_col - y_pred
 
         self.results_df = analysis_df_test
                 
                 
-    def get_model_metrics(self):
+    def get_model_metrics(self, df=None, display_figure=False, baseline=True):
         # Returns selected model ROC-AUC and PR-AUC, and creates lift curve figure
-        
-        results_df = self.results_df.copy()
-    
-        self.results_plus_df = results_df[results_df['Season'] >= 2021]
 
         metrics = []
         
         plt.figure(figsize=(10, 6))
         
         models = []
-
-        for name, settings in self.config['Feature Sets'].items():
-            # ex: Name: Residuals 
-            # settings: enabled: True, data: plus, models: {rf: true, en: true}
-            
-            if not settings['enabled']:
-                continue
-            
-            df = self.results_plus_df if settings['data'] == 'plus' else results_df
-            
-            for model, activated in settings['models'].items():
-                # ex: model: rf, activated: True
-                
-                if not activated:
-                    continue
-                
-                score_col = f"{name}_{model}_score"
-                
-                data = df[["led_to_breakout", score_col]]
-                
-                y = data["led_to_breakout"]
-                score = data[score_col]
-                
-                # creates base metrics table
-                roc_auc = roc_auc_score(y, score)
-                pr_auc = average_precision_score(y, score)
-                
-                metrics.append({
-                    "Model": f"{name} {model}",
-                    "N": len(data),
-                    "Breakouts": int(y.sum()),
-                    "ROC-AUC": roc_auc,
-                    "PR-AUC": pr_auc,
-                })
-                
-                models.append((f"{name} {model}", score_col, settings['data']))
-                
-        self.create_lift_plot(models)
         
+        if df is None:
+            df = self.results_df.copy()
+            
+        if baseline:
+            baseline_df = helpy.create_baseline_breakout_model(self.analysis_df, self.training_range, self.testing_range)
+            df['score_fip'] = baseline_df['score_fip']
+            models.append(('Baseline Model', 'score_fip'))
+            
+            metrics.append((get_metrics(df, 'Baseline Model', 'score_fip')))
+            
+        for key, predictor in self.predictors.items():
+        
+            predictions = predictor.predictions
+            
+            for prediction in predictions:
+                
+                model_name = prediction['model_name']
+            
+                score_col = f"{model_name}_score"
+        
+                metrics.append(get_metrics(df, model_name, score_col))
+                
+                models.append((model_name, score_col)) 
+                
+        if display_figure:
+            self.create_lift_plot(models, df)
+                
         self.breakout_metrics = pd.DataFrame(metrics)
         
         return (
@@ -216,15 +168,13 @@ class Analysis:
             .reset_index(drop=True)
         )
                 
-    def create_lift_plot(self, models):
+    def create_lift_plot(self, models, df):
         # creates lift curve figure
         # models should contain a list of (display name, column name, dataframe type)
 
         plt.figure(figsize=(10, 6))
 
-        for display_name, score_col, data_type in models:
-            
-            df = self.results_plus_df if data_type == 'plus' else self.results_df
+        for display_name, score_col in models:
             
             data = df[["led_to_breakout", score_col]]
             
@@ -252,3 +202,22 @@ class Analysis:
         plt.grid(alpha=0.2)
         plt.tight_layout()
         plt.show()
+        
+        
+def get_metrics(df, model_name, col_name):
+    data = df[["led_to_breakout", col_name]]
+                    
+    y = data["led_to_breakout"]
+    score = data[col_name]
+    
+    # creates base metrics table
+    roc_auc = roc_auc_score(y, score)
+    pr_auc = average_precision_score(y, score)
+    
+    return {
+            "Model": model_name,
+            "N": len(data),
+            "Breakouts": int(y.sum()),
+            "ROC-AUC": roc_auc,
+            "PR-AUC": pr_auc,
+        }
