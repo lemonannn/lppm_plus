@@ -23,7 +23,8 @@ STARTING_YEAR = pd.read_csv('arsenal_data.csv')['Season'].min()
 # pitch movement info (vertical)
 # Stuff+ and Command+
 ANALYSIS_COLUMNS = [
-    "PlayerName", "Season", "FIP-", "ERA-",
+    "PlayerName", "Season", "FIP-", "SIERA", "ERA-", "Pitches",
+    *[f"piw{p}/C" for p in ["FA", "FC", "FS", "SI", "CH", "SL", "CU", "CS", "KN"]],
     *[f"piv{p}" for p in ["FA", "FC", "FS", "SI", "CH", "SL", "CU", "CS", "KN"]],
     *[f"pi{p}%" for p in ["FA", "FC", "FS", "SI", "CH", "SL", "CU", "CS", "KN"]],
     *[f"pi{p}-{axis}" for axis in ["X", "Z"]
@@ -34,19 +35,19 @@ ANALYSIS_COLUMNS = [
 ]
 
 
-def is_breakout(analysis_df, FIP_percent_decrease_threshold, FIP_overall_threshold, breakout_year_buffer=3):
+def is_breakout(analysis_df, FIP_percent_decrease_threshold, FIP_overall_threshold, breakout_year_buffer=3, response='FIP-'):
     # Returns dataset with led_to_breakout column
     
     analysis_df = analysis_df.copy()
     analysis_df['led_to_breakout'] = False
 
-    baseline_fip = analysis_df['FIP-']
+    baseline_fip = analysis_df[response]
 
     valid_baseline = baseline_fip.notna() & (baseline_fip > 0)
 
     for i in range(1, breakout_year_buffer + 1):
         future_fip = analysis_df[
-            'next' + '_next' * (i - 1) + '_FIP-'
+            'next' + '_next' * (i - 1) + f'_{response}'
         ]
 
         mask = (
@@ -83,7 +84,7 @@ def get_year_df(year):
     
     return filtered_df
     
-def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold, breakout_year_buffer):
+def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold, breakout_year_buffer, response='FIP-'):
     # Return complete analysis df
     # Includes, most importantly, the led_to_breakout column
     
@@ -103,7 +104,7 @@ def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold, breakout_year
         prefix = "next" + "_next" * (i - 1)
 
         filtered_df[f"{prefix}_Season"] = grouped["Season"].shift(-i)
-        filtered_df[f"{prefix}_FIP-"] = grouped["FIP-"].shift(-i)
+        filtered_df[f"{prefix}_{response}"] = grouped[response].shift(-i)
 
     # Classify breakouts using the starting season as the baseline.
     filtered_df = is_breakout(
@@ -111,13 +112,14 @@ def get_analysis_df(FIP_decrease_threshold, FIP_overall_threshold, breakout_year
         FIP_decrease_threshold,
         FIP_overall_threshold,
         breakout_year_buffer,
+        response
     )
 
     # Keep analysis years and rows with known baseline and next-season FIP-.
     analysis_df = filtered_df.loc[
         (filtered_df["Season"] >= 2007)
         & filtered_df["FIP-"].notna()
-        & filtered_df["next_FIP-"].notna()
+        & filtered_df[f"next_{response}"].notna()
     ].copy()
     
     analysis_df = predict_residuals(analysis_df)
